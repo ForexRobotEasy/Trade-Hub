@@ -1,0 +1,103 @@
+mql5
+// Developer: Forex Robot Easy Team
+// Website: forexroboteasy.com
+
+// Trade Hub - Forex Trading Tool
+
+// Include necessary libraries
+#include <Trade\Trade.mqh>
+
+// Global variables
+double riskPercentage = 1.0; // Percentage risk
+bool isAutomatedLots = true; // Use automated lots by default
+
+// Function to open and close trades with one click
+void OneClickTrade()
+{
+   // Get the current symbol and timeframe
+   string symbol = Symbol();
+   ENUM_TIMEFRAMES timeframe = Period();
+
+   // Calculate lot size based on risk percentage
+   double lotSize;
+   if (isAutomatedLots)
+   {
+      double accountBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+      double accountEquity = AccountInfoDouble(ACCOUNT_EQUITY);
+      double stopLoss = 100.0; // Set stop loss value
+      lotSize = CalculateLotSize(accountBalance, accountEquity, stopLoss, riskPercentage);
+   }
+   else
+   {
+      lotSize = 0.01; // Fixed lot size
+   }
+
+   // Open a buy trade
+   double entryPrice = SymbolInfoDouble(symbol, SYMBOL_ASK);
+   double stopLossPrice = entryPrice - 100.0 * SymbolInfoDouble(symbol, SYMBOL_POINT); // Set stop loss price
+   double takeProfitPrice = entryPrice + 200.0 * SymbolInfoDouble(symbol, SYMBOL_POINT); // Set take profit price
+   int ticket = Buy(symbol, lotSize, entryPrice, stopLossPrice, takeProfitPrice, 'Trade Hub');
+
+   // Close the trade after a certain time
+   Sleep(5000); // Wait for 5 seconds
+   CloseOrder(ticket, entryPrice, 'Trade Hub');
+}
+
+// Function to calculate lot size based on risk percentage
+double CalculateLotSize(double accountBalance, double accountEquity, double stopLoss, double riskPercentage)
+{
+   double freeMargin = AccountInfoDouble(ACCOUNT_FREEMARGIN);
+   double lotSize = (freeMargin * accountBalance * riskPercentage) / (stopLoss * 100000.0);
+   return NormalizeDouble(lotSize, 2);
+}
+
+// Function to close an order
+void CloseOrder(int ticket, double price, string comment)
+{
+   if (ticket > 0)
+   {
+      double closePrice = price - 50.0 * SymbolInfoDouble(Symbol(), SYMBOL_POINT); // Set close price
+      bool result = OrderClose(ticket, closePrice, 0.01, 5);
+      if (result)
+      {
+         Print('Order closed successfully: ', ticket);
+      }
+      else
+      {
+         Print('Failed to close order: ', ticket);
+      }
+   }
+}
+
+// OnInit() function
+void OnInit()
+{
+   // Initialize the Trade library
+   TradeInitialize();
+
+   // Create a button on the chart for one-click trading
+   int buttonId = ChartButtonCreate(0, 0, 'One-Click Trade', 0, 0, 0);
+   ChartButtonSetInteger(buttonId, CHART_BUTTON_DATA, 1);
+}
+
+// OnChartEvent() function
+void OnChartEvent(const int id, const long &lparam, const double &dparam, const string &sparam)
+{
+   // Check if the button is clicked
+   if (id == CHARTEVENT_OBJECT_CLICK && lparam == OBJ_BUTTON)
+   {
+      int buttonId = StringToInteger(sparam);
+      int buttonData = ChartButtonGetInteger(buttonId, CHART_BUTTON_DATA);
+      if (buttonData == 1)
+      {
+         OneClickTrade(); // Execute one-click trade
+      }
+   }
+}
+
+// OnDeinit() function
+void OnDeinit(const int reason)
+{
+   // Delete the button from the chart
+   ChartButtonDelete(0, 'One-Click Trade', 0);
+}
